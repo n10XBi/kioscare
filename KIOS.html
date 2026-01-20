@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catatan Kios — POS & Laporan</title>
+    <style>
+        :root{font-family:Inter,ui-sans-serif,system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;} 
+        body{margin:0;padding:18px;background:#f5f7fb;color:#0f172a} 
+        header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:12px} 
+        h1{font-size:20px;margin:0} 
+        .container{display:grid;grid-template-columns:1fr 420px;gap:16px} 
+        .card{background:white;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(12,15,34,0.06)} 
+        table{width:100%;border-collapse:collapse} 
+        th,td{padding:8px;border-bottom:1px solid #eef2f7;font-size:13px;text-align:left} 
+        th{background:#fcfdff} 
+        input,select{padding:6px;border-radius:6px;border:1px solid #e2e8f0;width:100%;box-sizing:border-box} 
+        .row{display:flex;gap:8px} 
+        .btn{padding:8px 12px;border-radius:8px;border:0;background:#0ea5a4;color:white;cursor:pointer;font-size:13px;transition:all 0.2s ease} 
+        .btn:hover{background:#0d9488;transform:translateY(-1px);box-shadow:0 4px 8px rgba(14,165,164,0.2)}
+        .btn.alt{background:#64748b} 
+        .btn.alt:hover{background:#475569;transform:translateY(-1px);box-shadow:0 4px 8px rgba(100,116,139,0.2)}
+        .small{font-size:12px} 
+        .muted{color:#64748b} 
+        footer{margin-top:12px;font-size:12px;color:#475569} 
+        .reports{display:flex;flex-direction:column;gap:8px} 
+        .summary{display:flex;gap:8px;flex-wrap:wrap} 
+        .pill{padding:8px;border-radius:10px;background:#f8fafc;min-width:120px} 
+        .controls{display:flex;gap:8px;align-items:center} 
+        .right{display:flex;flex-direction:column;gap:8px} 
+        .table-wrap{max-height:420px;overflow:auto}
+        
+        /* Modal styles dengan animasi */
+        .modal-backdrop{
+            position:fixed;
+            inset:0;
+            background:rgba(2,6,23,0.5);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:1000;
+            animation:fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal{
+            background:white;
+            border-radius:10px;
+            padding:16px;
+            min-width:320px;
+            box-shadow:0 8px 30px rgba(2,6,23,0.2);
+            animation:slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal h3{margin:0 0 8px}
+        .modal .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+        .modal-label{font-size:12px;color:#475569;margin-bottom:4px;font-weight:500}
+        .modal-input-group{margin-bottom:8px}
+        hr{margin:12px 0;border:0;border-top:1px solid #e2e8f0}
+        
+        /* Clear Mode Styles */
+        body.clear-mode main .card:not(.clear-mode-visible),
+        body.clear-mode aside .card:not(.clear-mode-visible),
+        body.clear-mode hr,
+        body.clear-mode h3:not(.clear-mode-visible) {
+            display: none !important;
+        }
+        
+        body.clear-mode .container {
+            grid-template-columns: 1fr !important;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        body.clear-mode main {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        body.clear-mode .clear-mode-visible {
+            display: block !important;
+        }
+        
+        .clear-mode-toggle {
+            background: #f59e0b !important;
+        }
+        
+        .clear-mode-toggle.active {
+            background: #059669 !important;
+        }
+        
+        /* Import Modal */
+        .import-modal {
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .import-options {
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .import-option {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .import-option:hover {
+            border-color: #0ea5a4;
+            background: #f0f9ff;
+        }
+        
+        .import-option.selected {
+            border-color: #0ea5a4;
+            background: #f0f9ff;
+        }
+        
+        .import-option h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+        }
+        
+        .import-option p {
+            margin: 0;
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .file-input-wrapper {
+            margin: 12px 0;
+            position: relative;
+        }
+        
+        .file-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 16px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .file-input-label:hover {
+            border-color: #0ea5a4;
+            background: #f8fafc;
+        }
+        
+        .file-input-label.dragover {
+            border-color: #0ea5a4;
+            background: #f0f9ff;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { border-color: #0ea5a4; }
+            50% { border-color: #7dd3fc; }
+            100% { border-color: #0ea5a4; }
+        }
+        
+        .file-info {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #475569;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+        
+        /* Quick transaction styling for clear mode */
+        .quick-transactions {
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 6px 18px rgba(12,15,34,0.06);
+        }
+        
+        .quick-transactions h3 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #0f172a;
+        }
+        
+        .transaction-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .transaction-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .transaction-form .btn {
+            margin-top: 4px;
+        }
+        
+        .clear-mode-summary {
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 6px 18px rgba(12,15,34,0.06);
+        }
+        
+        .clear-mode-summary h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            color: #0f172a;
+        }
+        
+        .clear-mode-summary-content {
+            font-size: 24px;
+            font-weight: bold;
+            color: #059669;
+            text-align: center;
+            padding: 16px 0;
+        }
+        
+        .clear-mode-info {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 8px;
+        }
+        
+        /* Tombol aksi di tabel */
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .action-btn {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .edit-btn {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .edit-btn:hover {
+            background: #bfdbfe;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(29,78,216,0.2);
+        }
+        
+        .delete-btn {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .delete-btn:hover {
+            background: #fecaca;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(220,38,38,0.2);
+        }
+        
+        /* Animasi untuk transaksi baru */
+        .new-transaction {
+            animation: highlightRow 1.5s ease;
+        }
+        
+        @keyframes highlightRow {
+            0% { background-color: #f0fdf4; }
+            70% { background-color: #f0fdf4; }
+            100% { background-color: transparent; }
+        }
+        
+        /* Animasi untuk tombol */
+        @keyframes buttonClick {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        
+        .btn:active {
+            animation: buttonClick 0.2s ease;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .transaction-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header .controls {
+                flex-wrap: wrap;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            
+            header .controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Catatan Kios — POS Sederhana</h1>
+        <div class="controls">
+            <button class="btn clear-mode-toggle" id="toggleClearMode">Mode Clear</button>
+            <input type="text" id="search" placeholder="Cari barang..." style="width:200px;">
+            <button class="btn alt" id="importCsv">Import CSV</button>
+            <button class="btn" id="exportCsv">Export CSV</button>
+            <button class="btn alt" id="clearData">Reset Data</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <!-- Mode Clear: Quick Transactions Section -->
+            <div class="quick-transactions clear-mode-visible">
+                <h3>Transaksi Cepat</h3>
+                <div class="transaction-grid">
+                    <div class="transaction-form">
+                        <strong>Jual (Sale)</strong>
+                        <select id="saleItemClear"></select>
+                        <input type="number" id="saleQtyClear" placeholder="Qty" min="1">
+                        <input type="date" id="saleDateClear">
+                        <button class="btn" id="recordSaleClear">Catat Penjualan</button>
+                    </div>
+
+                    <div class="transaction-form">
+                        <strong>Beli / Restock (Purchase)</strong>
+                        <select id="buyItemClear"></select>
+                        <input type="number" id="buyQtyClear" placeholder="Qty" min="1">
+                        <input type="date" id="buyDateClear">
+                        <button class="btn" id="recordBuyClear">Catat Pembelian</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode Clear: Today Summary Section -->
+            <div class="clear-mode-summary clear-mode-visible">
+                <h3>Ringkasan Hari Ini</h3>
+                <div class="clear-mode-summary-content" id="todaySummaryClear">Rp 0</div>
+                <div class="clear-mode-info">
+                    Total penjualan hari ini (otomatis terupdate)
+                </div>
+            </div>
+
+            <!-- Original Content (Hidden in Clear Mode) -->
+            <div class="card">
+                <h3>Daftar Barang & Stok</h3>
+                <div class="row" style="margin-bottom:8px">
+                    <button class="btn" id="addItemBtn">Tambah Barang</button>
+                </div>
+                <div class="table-wrap">
+                    <table id="itemsTable">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Nama Barang</th>
+                                <th>Harga Modal (Rp)</th>
+                                <th>Harga Jual (Rp)</th>
+                                <th>Stok Awal</th>
+                                <th>Masuk</th>
+                                <th>Keluar</th>
+                                <th>Stok Akhir</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr />
+
+            <h3>Transaksi Cepat</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="card small">
+                    <strong>Jual (Sale)</strong>
+                    <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+                        <select id="saleItem"></select>
+                        <input type="number" id="saleQty" placeholder="Qty" min="1" />
+                        <input type="date" id="saleDate" />
+                        <button class="btn" id="recordSale">Catat Penjualan</button>
+                    </div>
+                </div>
+                <div class="card small">
+                    <strong>Beli / Restock (Purchase)</strong>
+                    <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+                        <select id="buyItem"></select>
+                        <input type="number" id="buyQty" placeholder="Qty" min="1" />
+                        <input type="date" id="buyDate" />
+                        <button class="btn" id="recordBuy">Catat Pembelian</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <h3>Transaksi (Riwayat)</h3>
+            <div class="table-wrap" style="max-height:180px">
+                <table id="txTable">
+                    <thead>
+                        <tr>
+                            <th>Tgl</th>
+                            <th>Tipe</th>
+                            <th>Nama</th>
+                            <th>Qty</th>
+                            <th>Harga Jual</th>
+                            <th>Harga Modal</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+
+        <aside class="right">
+            <div class="card">
+                <h3>Laporan</h3>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input type="date" id="fromDate" />
+                    <input type="date" id="toDate" />
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <button class="btn" id="btnWeekly">Hitung Mingguan</button>
+                    <button class="btn" id="btnMonthly">Hitung Bulanan</button>
+                </div>
+                <div class="reports">
+                    <div class="summary" id="summaryPills">
+                        <div class="pill">
+                            <div class="muted small">Pendapatan</div>
+                            <div id="rev">Rp 0</div>
+                        </div>
+                        <div class="pill">
+                            <div class="muted small">Harga Pokok Terjual</div>
+                            <div id="cogs">Rp 0</div>
+                        </div>
+                        <div class="pill">
+                            <div class="muted small">Laba Kotor</div>
+                            <div id="profit">Rp 0</div>
+                        </div>
+                        <div class="pill">
+                            <div class="muted small">Total Pembelian</div>
+                            <div id="purchases">Rp 0</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:8px">
+                    <small class="muted">Catatan: Laba kotor = Pendapatan - Harga pokok terjual (COGS). Laporan menggunakan transaksi yang tercatat dalam rentang tanggal.</small>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Ringkasan Cepat (Hari ini)</h3>
+                <div class="muted small">Total penjualan hari ini:</div>
+                <div id="todaySummary">Rp 0</div>
+            </div>
+
+            <div class="card">
+                <h3>Petunjuk</h3>
+                <ol class="small muted">
+                    <li>Tambah barang melalui tombol "Tambah Barang".</li>
+                    <li>Gunakan formulir "Jual" atau "Beli" untuk mencatat transaksi. Tanggal otomatis jika kosong.</li>
+                    <li>Pilih rentang tanggal lalu tekan "Hitung Mingguan" atau "Hitung Bulanan".</li>
+                    <li>Data tersimpan di browser (localStorage). Gunakan "Export CSV" untuk backup.</li>
+                    <li>Gunakan "Import CSV" untuk mengembalikan data dari backup.</li>
+                </ol>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal Tambah/Edit Barang -->
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal">
+            <h3 id="modalTitle">Tambah Barang</h3>
+            <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="modal-input-group">
+                    <div class="modal-label">Nama Barang *</div>
+                    <input type="text" id="m_nama" placeholder="Contoh: Pakan Kenari Premium">
+                </div>
+
+                <div class="modal-input-group">
+                    <div class="modal-label">Harga Modal (Rp)</div>
+                    <input type="number" id="m_hargaModal" placeholder="0" min="0" step="100">
+                </div>
+
+                <div class="modal-input-group">
+                    <div class="modal-label">Harga Jual (Rp)</div>
+                    <input type="number" id="m_hargaJual" placeholder="0" min="0" step="100">
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="modal-input-group">
+                        <div class="modal-label">Stok Awal</div>
+                        <input type="number" id="m_stokAwal" placeholder="0" min="0">
+                    </div>
+
+                    <div class="modal-input-group">
+                        <div class="modal-label">Stok Masuk</div>
+                        <input type="number" id="m_masuk" placeholder="0" min="0">
+                    </div>
+
+                    <div class="modal-input-group">
+                        <div class="modal-label">Stok Keluar</div>
+                        <input type="number" id="m_keluar" placeholder="0" min="0">
+                    </div>
+
+                    <div class="modal-input-group">
+                        <div class="modal-label">Stok Akhir</div>
+                        <input type="text" id="m_stokAkhir" placeholder="Otomatis" disabled style="background:#f8fafc">
+                    </div>
+                </div>
+
+                <div style="margin-top:8px;padding:8px;background:#f0f9ff;border-radius:6px;border-left:4px solid #0ea5a4">
+                    <small class="muted">
+                        <strong>Catatan:</strong> Stok akhir = Stok awal + Masuk - Keluar<br>
+                        Isi stok awal, masuk, dan keluar sesuai keadaan saat ini
+                    </small>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn alt" id="modalCancel">Batal</button>
+                <button class="btn" id="modalSave">Simpan Barang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Transaksi -->
+    <div class="modal-backdrop" id="txModalBackdrop">
+        <div class="modal">
+            <h3>Edit Transaksi</h3>
+            <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="modal-input-group">
+                    <div class="modal-label">Tanggal Transaksi</div>
+                    <input type="date" id="tx_date">
+                </div>
+
+                <div class="modal-input-group">
+                    <div class="modal-label">Jumlah (Qty)</div>
+                    <input type="number" id="tx_qty" placeholder="0" min="1">
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn alt" id="txCancel">Batal</button>
+                <button class="btn" id="txSave">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Import CSV -->
+    <div class="modal-backdrop" id="importModalBackdrop">
+        <div class="modal import-modal">
+            <h3>Import Data dari CSV</h3>
+
+            <div class="import-options">
+                <div class="import-option selected" data-option="append">
+                    <h4>Tambah Data Baru</h4>
+                    <p>Menambahkan data dari file ke data yang sudah ada</p>
+                </div>
+                <div class="import-option" data-option="replace">
+                    <h4>Ganti Semua Data</h4>
+                    <p>Menghapus semua data yang ada dan mengganti dengan data dari file</p>
+                </div>
+            </div>
+
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none" />
+
+                <label for="fileInput" class="file-input-label" id="fileInputLabel">
+                    <div>📁 Klik untuk memilih file CSV atau tarik file ke sini</div>
+                    <div class="file-info" id="fileInfo">Belum ada file dipilih</div>
+                </label>
+            </div>
+
+            <div class="import-info" id="importInfo">
+                <small class="muted">
+                    <strong>Format yang didukung:</strong> File CSV yang dihasilkan dari fitur Export CSV.<br>
+                    <strong>Format data:</strong> Daftar barang dan riwayat transaksi.
+                </small>
+            </div>
+
+            <div class="actions">
+                <button class="btn alt" id="importCancel">Batal</button>
+                <button class="btn" id="importProcess" disabled>Proses Import</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Made for: Catatan Kios — fitur realtime sederhana. Modifikasi boleh diminta.
+    </footer>
+
+    <script>
+        (function(){
+            // Helpers
+            const $ = id => document.getElementById(id);
+            const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+            
+            // Storage keys
+            const KEY_ITEMS = 'kios_items_v1';
+            const KEY_TX = 'kios_txns_v1';
+            const KEY_MODE = 'kios_clear_mode';
+            
+            // Default sample data
+            const sampleItems = [
+                {id:uid(), nama:'Pakan Kenari Premium', hargaModal:10000, hargaJual:15000, stokAwal:50, masuk:20, keluar:15},
+                {id:uid(), nama:'Vitamin Burung (Kecil)', hargaModal:5000, hargaJual:8000, stokAwal:20, masuk:10, keluar:5},
+                {id:uid(), nama:'Sangkar Besi No.2', hargaModal:150000, hargaJual:200000, stokAwal:5, masuk:2, keluar:1},
+                {id:uid(), nama:'Kroto (per Ons)', hargaModal:12000, hargaJual:15000, stokAwal:10, masuk:5, keluar:8}
+            ];
+            
+            // Load / Save
+            function loadItems(){
+                const raw = localStorage.getItem(KEY_ITEMS);
+                if(!raw) {
+                    saveItems(sampleItems);
+                    return sampleItems;
+                }
+                try{
+                    return JSON.parse(raw);
+                }catch(e){
+                    return sampleItems;
+                }
+            }
+            
+            function saveItems(items){
+                localStorage.setItem(KEY_ITEMS, JSON.stringify(items));
+            }
+            
+            function loadTx(){
+                const raw = localStorage.getItem(KEY_TX);
+                return raw ? JSON.parse(raw) : [];
+            }
+            
+            function saveTx(tx){
+                localStorage.setItem(KEY_TX, JSON.stringify(tx));
+            }
+            
+            function loadMode(){
+                const raw = localStorage.getItem(KEY_MODE);
+                return raw === 'true';
+            }
+            
+            function saveMode(isClearMode){
+                localStorage.setItem(KEY_MODE, isClearMode);
+            }
+            
+            // UID
+            function uid(){
+                return 'id' + Math.random().toString(36).slice(2,9);
+            }
+            
+            // State
+            let items = loadItems();
+            let txns = loadTx();
+            let editId = null;
+            let editTxId = null;
+            let isClearMode = loadMode();
+            let importMode = 'append'; // 'append' or 'replace'
+            let selectedFile = null;
+            
+            // Initialize clear mode
+            function initClearMode() {
+                if (isClearMode) {
+                    document.body.classList.add('clear-mode');
+                    $('toggleClearMode').classList.add('active');
+                    $('toggleClearMode').textContent = 'Mode Normal';
+                } else {
+                    document.body.classList.remove('clear-mode');
+                    $('toggleClearMode').classList.remove('active');
+                    $('toggleClearMode').textContent = 'Mode Clear';
+                }
+            }
+            
+            // Toggle clear mode
+            function toggleClearMode() {
+                isClearMode = !isClearMode;
+                saveMode(isClearMode);
+                initClearMode();
+                
+                // Refresh selects for clear mode forms
+                refreshSelectsForClearMode();
+            }
+            
+            // UI render
+            function renderItems(filterText=''){
+                const tbody = document.querySelector('#itemsTable tbody');
+                tbody.innerHTML='';
+                const list = items.filter(it => 
+                    it.nama.toLowerCase().includes(filterText.toLowerCase())
+                );
+                
+                list.forEach((it, idx) => {
+                    const stokAkhir = (Number(it.stokAwal||0) + Number(it.masuk||0) - Number(it.keluar||0));
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${idx+1}</td>
+                        <td>${escapeHtml(it.nama)}</td>
+                        <td>${Number(it.hargaModal).toLocaleString('id-ID')}</td>
+                        <td>${Number(it.hargaJual).toLocaleString('id-ID')}</td>
+                        <td>${it.stokAwal||0}</td>
+                        <td>${it.masuk||0}</td>
+                        <td>${it.keluar||0}</td>
+                        <td>${stokAkhir}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button data-id="${it.id}" class="action-btn edit-btn">✏️ Edit</button>
+                                <button data-id="${it.id}" class="action-btn delete-btn">🗑️ Hapus</button>
+                            </div>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                
+                // wire actions
+                document.querySelectorAll('.delete-btn').forEach(b => 
+                    b.onclick = e => {
+                        const id = e.target.closest('button').dataset.id;
+                        if(confirm('Hapus barang?')){
+                            items = items.filter(x => x.id !== id);
+                            saveItems(items);
+                            renderAll();
+                        }
+                    }
+                );
+                
+                document.querySelectorAll('.edit-btn').forEach(b => 
+                    b.onclick = e => {
+                        openModalForEdit(items.find(x => x.id === e.target.closest('button').dataset.id));
+                    }
+                );
+                
+                refreshSelects();
+                refreshSelectsForClearMode();
+            }
+            
+            function escapeHtml(s){
+                const div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+            
+            function refreshSelects(){
+                const saleSel = $('saleItem');
+                const buySel = $('buyItem');
+                
+                [saleSel, buySel].forEach(sel => {
+                    sel.innerHTML = '<option value="">-- Pilih Barang --</option>';
+                    items.forEach(it => {
+                        const opt = document.createElement('option');
+                        opt.value = it.id;
+                        opt.textContent = it.nama;
+                        sel.appendChild(opt);
+                    });
+                });
+                
+                // Set default dates
+                const today = todayStr();
+                $('saleDate').value = today;
+                $('buyDate').value = today;
+                $('fromDate').value = today;
+                $('toDate').value = today;
+            }
+            
+            function refreshSelectsForClearMode() {
+                const saleSel = $('saleItemClear');
+                const buySel = $('buyItemClear');
+                
+                [saleSel, buySel].forEach(sel => {
+                    sel.innerHTML = '<option value="">-- Pilih Barang --</option>';
+                    items.forEach(it => {
+                        const opt = document.createElement('option');
+                        opt.value = it.id;
+                        opt.textContent = it.nama;
+                        sel.appendChild(opt);
+                    });
+                });
+                
+                // Set default dates for clear mode
+                const today = todayStr();
+                $('saleDateClear').value = today;
+                $('buyDateClear').value = today;
+            }
+            
+            function renderTx(){
+                const tb = document.querySelector('#txTable tbody');
+                tb.innerHTML = '';
+                
+                const sorted = txns.slice().sort((a,b) => 
+                    new Date(b.date) - new Date(a.date)
+                );
+                
+                sorted.forEach((t, index) => {
+                    const it = items.find(i => i.id === t.itemId) || {};
+                    const tr = document.createElement('tr');
+                    // Tambah class animasi untuk transaksi baru (5 transaksi terbaru)
+                    const isNew = index < 5 ? 'new-transaction' : '';
+                    tr.innerHTML = `
+                        <td>${t.date}</td>
+                        <td>${t.type === 'sale' ? 'Jual' : 'Beli'}</td>
+                        <td>${it.nama || '-'}</td>
+                        <td>${t.qty}</td>
+                        <td>${(it.hargaJual||0).toLocaleString('id-ID')}</td>
+                        <td>${(it.hargaModal||0).toLocaleString('id-ID')}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn edit-btn editTx" data-id="${t.id}">✏️ Edit</button>
+                                <button class="action-btn delete-btn delTx" data-id="${t.id}">🗑️ Hapus</button>
+                            </div>
+                        </td>`;
+                    tr.className = isNew;
+                    tb.appendChild(tr);
+                });
+                
+                // Wire transaction actions
+                document.querySelectorAll('.delTx').forEach(b => 
+                    b.onclick = e => {
+                        const id = e.target.closest('button').dataset.id;
+                        if(confirm('Hapus transaksi?')){
+                            const tx = txns.find(x => x.id === id);
+                            if(tx) {
+                                // Reverse stock changes
+                                const it = items.find(i => i.id === tx.itemId);
+                                if(it) {
+                                    if(tx.type === 'sale') {
+                                        it.keluar = Math.max(0, Number(it.keluar||0) - tx.qty);
+                                    } else if(tx.type === 'purchase') {
+                                        it.masuk = Math.max(0, Number(it.masuk||0) - tx.qty);
+                                    }
+                                }
+                            }
+                            
+                            txns = txns.filter(x => x.id !== id);
+                            saveTx(txns);
+                            saveItems(items);
+                            renderAll();
+                        }
+                    }
+                );
+                
+                document.querySelectorAll('.editTx').forEach(b => 
+                    b.onclick = e => {
+                        openTxModal(txns.find(x => x.id === e.target.closest('button').dataset.id));
+                    }
+                );
+            }
+            
+            // Modal functions (Barang)
+            function openModalForEdit(item){
+                editId = item ? item.id : null;
+                $('modalTitle').textContent = editId ? 'Edit Barang' : 'Tambah Barang';
+                $('m_nama').value = item ? item.nama || '' : '';
+                $('m_hargaModal').value = item ? (item.hargaModal||0) : 0;
+                $('m_hargaJual').value = item ? (item.hargaJual||0) : 0;
+                $('m_stokAwal').value = item ? (item.stokAwal||0) : 0;
+                $('m_masuk').value = item ? (item.masuk||0) : 0;
+                $('m_keluar').value = item ? (item.keluar||0) : 0;
+                
+                // Calculate and show current stock
+                updateStockDisplay();
+                
+                $('modalBackdrop').style.display = 'flex';
+                
+                // Focus on name field when modal opens
+                setTimeout(() => $('m_nama').focus(), 100);
+            }
+            
+            function closeModal(){
+                editId = null;
+                $('modalBackdrop').style.display = 'none';
+            }
+            
+            // Update stock display in modal
+            function updateStockDisplay(){
+                const stokAwal = Number($('m_stokAwal').value || 0);
+                const masuk = Number($('m_masuk').value || 0);
+                const keluar = Number($('m_keluar').value || 0);
+                const stokAkhir = stokAwal + masuk - keluar;
+                $('m_stokAkhir').value = stokAkhir;
+            }
+            
+            // Modal functions (Transaksi)
+            function openTxModal(tx){
+                if(!tx) return;
+                editTxId = tx.id;
+                $('tx_date').value = tx.date;
+                $('tx_qty').value = tx.qty;
+                $('txModalBackdrop').style.display = 'flex';
+            }
+            
+            function closeTxModal(){
+                editTxId = null;
+                $('txModalBackdrop').style.display = 'none';
+            }
+            
+            // Import Modal functions
+            function openImportModal() {
+                selectedFile = null;
+                fileInput.value = '';
+                $('fileInfo').textContent = 'Belum ada file dipilih';
+                $('importProcess').disabled = true;
+                
+                // Reset selection
+                document.querySelectorAll('.import-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                    if(opt.dataset.option === 'append') {
+                        opt.classList.add('selected');
+                    }
+                });
+                importMode = 'append';
+                
+                $('importModalBackdrop').style.display = 'flex';
+            }
+            
+            function closeImportModal() {
+                selectedFile = null;
+                $('importModalBackdrop').style.display = 'none';
+            }
+            
+            // Parse CSV function - lebih sederhana
+            function parseCSV(csvText) {
+                const rows = [];
+                const lines = csvText.split('\n');
+                
+                for (let line of lines) {
+                    if (line.trim() === '') continue;
+                    
+                    const row = [];
+                    let inQuotes = false;
+                    let currentField = '';
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        
+                        if (char === '"' && line[i + 1] === '"') {
+                            // Escaped quote
+                            currentField += '"';
+                            i++;
+                        } else if (char === '"') {
+                            // Start or end of quoted field
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            // End of field
+                            row.push(currentField);
+                            currentField = '';
+                        } else {
+                            currentField += char;
+                        }
+                    }
+                    
+                    // Add the last field
+                    row.push(currentField);
+                    rows.push(row);
+                }
+                
+                return rows;
+            }
+            
+            // Process imported CSV data - versi lebih sederhana
+            function processImportedData(csvData) {
+                const importedItems = [];
+                const importedTxns = [];
+                let isProcessingItems = false;
+                let isProcessingTx = false;
+                
+                for (let row of csvData) {
+                    // Skip empty rows
+                    if (row.length === 0 || (row.length === 1 && row[0].trim() === '')) {
+                        continue;
+                    }
+                    
+                    // Check for section headers
+                    const firstCell = row[0] ? row[0].toLowerCase() : '';
+                    
+                    if (firstCell.includes('daftar barang')) {
+                        isProcessingItems = true;
+                        isProcessingTx = false;
+                        continue;
+                    }
+                    
+                    if (firstCell.includes('transaksi') || firstCell.includes('riwayat')) {
+                        isProcessingItems = false;
+                        isProcessingTx = true;
+                        continue;
+                    }
+                    
+                    // Skip header rows
+                    if (row[0] && (row[0].toLowerCase() === 'nama' || row[0].toLowerCase() === 'tanggal' || row[0] === 'No')) {
+                        continue;
+                    }
+                    
+                    // Process items
+                    if (isProcessingItems && row.length >= 7) {
+                        const item = {
+                            id: uid(),
+                            nama: row[0] || '',
+                            hargaModal: Number(row[1]) || 0,
+                            hargaJual: Number(row[2]) || 0,
+                            stokAwal: Number(row[3]) || 0,
+                            masuk: Number(row[4]) || 0,
+                            keluar: Number(row[5]) || 0
+                        };
+                        importedItems.push(item);
+                    }
+                    
+                    // Process transactions
+                    if (isProcessingTx && row.length >= 4) {
+                        // Find item by name
+                        const itemName = row[2] || '';
+                        let itemId = null;
+                        
+                        // Cari item yang sudah ada
+                        const existingItem = importedItems.find(it => 
+                            it.nama.toLowerCase() === itemName.toLowerCase()
+                        );
+                        
+                        if (existingItem) {
+                            itemId = existingItem.id;
+                        } else {
+                            // Jika item belum ada, buat baru
+                            const newItem = {
+                                id: uid(),
+                                nama: itemName,
+                                hargaModal: Number(row[5]) || 0,
+                                hargaJual: Number(row[4]) || 0,
+                                stokAwal: 0,
+                                masuk: 0,
+                                keluar: 0
+                            };
+                            importedItems.push(newItem);
+                            itemId = newItem.id;
+                        }
+                        
+                        const tx = {
+                            id: uid(),
+                            type: (row[1] || '').toLowerCase() === 'jual' ? 'sale' : 'purchase',
+                            itemId: itemId,
+                            qty: Number(row[3]) || 0,
+                            date: row[0] || todayStr()
+                        };
+                        importedTxns.push(tx);
+                    }
+                }
+                
+                return { importedItems, importedTxns };
+            }
+            
+            // Import data dari CSV
+            function importData() {
+                if (!selectedFile) {
+                    alert('Pilih file CSV terlebih dahulu');
+                    return;
+                }
+                
+                // Cek ekstensi file
+                if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
+                    alert('File harus berekstensi .csv');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const csvText = e.target.result;
+                        const csvData = parseCSV(csvText);
+                        const { importedItems, importedTxns } = processImportedData(csvData);
+                        
+                        if (importedItems.length === 0 && importedTxns.length === 0) {
+                            alert('Tidak ada data yang ditemukan dalam file. Pastikan format file sesuai dengan export dari aplikasi ini.');
+                            return;
+                        }
+                        
+                        let message = `Import berhasil!\n\nBarang: ${importedItems.length} item\nTransaksi: ${importedTxns.length} transaksi\n\n`;
+                        
+                        if (importMode === 'replace') {
+                            // Ganti semua data
+                            items = importedItems;
+                            txns = importedTxns;
+                            message += 'Semua data telah diganti dengan data dari file.';
+                        } else {
+                            // Tambah data baru
+                            // Gabungkan items, hindari duplikat berdasarkan nama
+                            const existingNames = new Set(items.map(item => item.nama.toLowerCase()));
+                            
+                            importedItems.forEach(newItem => {
+                                if (!existingNames.has(newItem.nama.toLowerCase())) {
+                                    items.push(newItem);
+                                    existingNames.add(newItem.nama.toLowerCase());
+                                }
+                            });
+                            
+                            // Tambahkan transaksi baru
+                            txns = [...txns, ...importedTxns];
+                            message += 'Data baru telah ditambahkan ke data yang sudah ada.';
+                        }
+                        
+                        // Simpan ke localStorage
+                        saveItems(items);
+                        saveTx(txns);
+                        
+                        // Update UI
+                        renderAll();
+                        
+                        // Tutup modal
+                        closeImportModal();
+                        
+                        // Tampilkan pesan sukses
+                        alert(message);
+                        
+                    } catch (error) {
+                        console.error('Import error:', error);
+                        alert('Terjadi kesalahan saat mengimpor data. Pastikan file CSV memiliki format yang benar.\n\nFormat yang didukung adalah file yang dihasilkan dari fitur Export CSV aplikasi ini.');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    alert('Gagal membaca file. Pastikan file tidak rusak.');
+                };
+                
+                reader.readAsText(selectedFile, 'UTF-8');
+            }
+            
+            // Transactions: sale / buy (original)
+            function recordSale(){
+                const itemId = $('saleItem').value;
+                const qty = Number($('saleQty').value || 0);
+                let date = $('saleDate').value;
+                
+                if(!itemId){
+                    alert('Pilih barang terlebih dahulu');
+                    return;
+                }
+                
+                if(qty <= 0){
+                    alert('Masukkan jumlah (qty) yang valid (> 0)');
+                    return;
+                }
+                
+                if(!date) date = todayStr();
+                
+                const it = items.find(x => x.id === itemId);
+                if(!it) return;
+                
+                // Check stock availability
+                const stokAkhir = (Number(it.stokAwal||0) + Number(it.masuk||0) - Number(it.keluar||0));
+                if(stokAkhir < qty){
+                    if(!confirm(`Stok tersedia: ${stokAkhir}. Tetap catat penjualan?`)){
+                        return;
+                    }
+                }
+                
+                // Update stock
+                it.keluar = Number(it.keluar||0) + qty;
+                
+                // Record transaction
+                txns.push({
+                    id: uid(),
+                    type: 'sale',
+                    itemId: itemId,
+                    qty: qty,
+                    date: date
+                });
+                
+                saveItems(items);
+                saveTx(txns);
+                renderAll();
+                $('saleQty').value = '';
+            }
+            
+            function recordBuy(){
+                const itemId = $('buyItem').value;
+                const qty = Number($('buyQty').value || 0);
+                let date = $('buyDate').value;
+                
+                if(!itemId){
+                    alert('Pilih barang terlebih dahulu');
+                    return;
+                }
+                
+                if(qty <= 0){
+                    alert('Masukkan jumlah (qty) yang valid (> 0)');
+                    return;
+                }
+                
+                if(!date) date = todayStr();
+                
+                const it = items.find(x => x.id === itemId);
+                if(!it) return;
+                
+                // Update stock
+                it.masuk = Number(it.masuk||0) + qty;
+                
+                // Record transaction
+                txns.push({
+                    id: uid(),
+                    type: 'purchase',
+                    itemId: itemId,
+                    qty: qty,
+                    date: date
+                });
+                
+                saveItems(items);
+                saveTx(txns);
+                renderAll();
+                $('buyQty').value = '';
+            }
+            
+            // Transactions: sale / buy (clear mode)
+            function recordSaleClear(){
+                const itemId = $('saleItemClear').value;
+                const qty = Number($('saleQtyClear').value || 0);
+                let date = $('saleDateClear').value;
+                
+                if(!itemId){
+                    alert('Pilih barang terlebih dahulu');
+                    return;
+                }
+                
+                if(qty <= 0){
+                    alert('Masukkan jumlah (qty) yang valid (> 0)');
+                    return;
+                }
+                
+                if(!date) date = todayStr();
+                
+                const it = items.find(x => x.id === itemId);
+                if(!it) return;
+                
+                // Check stock availability
+                const stokAkhir = (Number(it.stokAwal||0) + Number(it.masuk||0) - Number(it.keluar||0));
+                if(stokAkhir < qty){
+                    if(!confirm(`Stok tersedia: ${stokAkhir}. Tetap catat penjualan?`)){
+                        return;
+                    }
+                }
+                
+                // Update stock
+                it.keluar = Number(it.keluar||0) + qty;
+                
+                // Record transaction
+                txns.push({
+                    id: uid(),
+                    type: 'sale',
+                    itemId: itemId,
+                    qty: qty,
+                    date: date
+                });
+                
+                saveItems(items);
+                saveTx(txns);
+                renderAll();
+                $('saleQtyClear').value = '';
+            }
+            
+            function recordBuyClear(){
+                const itemId = $('buyItemClear').value;
+                const qty = Number($('buyQtyClear').value || 0);
+                let date = $('buyDateClear').value;
+                
+                if(!itemId){
+                    alert('Pilih barang terlebih dahulu');
+                    return;
+                }
+                
+                if(qty <= 0){
+                    alert('Masukkan jumlah (qty) yang valid (> 0)');
+                    return;
+                }
+                
+                if(!date) date = todayStr();
+                
+                const it = items.find(x => x.id === itemId);
+                if(!it) return;
+                
+                // Update stock
+                it.masuk = Number(it.masuk||0) + qty;
+                
+                // Record transaction
+                txns.push({
+                    id: uid(),
+                    type: 'purchase',
+                    itemId: itemId,
+                    qty: qty,
+                    date: date
+                });
+                
+                saveItems(items);
+                saveTx(txns);
+                renderAll();
+                $('buyQtyClear').value = '';
+            }
+            
+            // Date helpers
+            function todayStr(){
+                const d = new Date();
+                return d.toISOString().slice(0,10);
+            }
+            
+            // Reporting
+            function calcReport(fromDate, toDate){
+                if(!fromDate || !toDate) {
+                    return {revenue:0, cogs:0, profit:0, purchases:0, txCount:0};
+                }
+                
+                const from = new Date(fromDate + 'T00:00:00');
+                const to = new Date(toDate + 'T23:59:59');
+                
+                // Filter transactions
+                const inRange = txns.filter(t => {
+                    const d = new Date(t.date + 'T12:00:00');
+                    return d >= from && d <= to;
+                });
+                
+                let revenue = 0, cogs = 0, purchases = 0;
+                
+                inRange.forEach(t => {
+                    const it = items.find(i => i.id === t.itemId) || {};
+                    if(t.type === 'sale'){
+                        revenue += (it.hargaJual || 0) * t.qty;
+                        cogs += (it.hargaModal || 0) * t.qty;
+                    }
+                    if(t.type === 'purchase'){
+                        purchases += (it.hargaModal || 0) * t.qty;
+                    }
+                });
+                
+                const profit = revenue - cogs;
+                return {revenue, cogs, profit, purchases, txCount: inRange.length};
+            }
+            
+            // Week grouping (ISO week year-week)
+            function isoWeekKey(dateStr){
+                const d = new Date(dateStr + 'T12:00:00');
+                const target = new Date(d.valueOf());
+                const dayNr = (d.getDay() + 6) % 7;
+                target.setDate(target.getDate() - dayNr + 3);
+                const firstThursday = new Date(target.getFullYear(), 0, 4);
+                const diff = (target - firstThursday) / 86400000;
+                const week = 1 + Math.round(diff/7);
+                return target.getFullYear() + '-W' + String(week).padStart(2,'0');
+            }
+            
+            function calcWeekly(fromDate, toDate){
+                if(!fromDate || !toDate) return {};
+                
+                const from = new Date(fromDate + 'T00:00:00');
+                const to = new Date(toDate + 'T23:59:59');
+                
+                const inRange = txns.filter(t => {
+                    const d = new Date(t.date + 'T12:00:00');
+                    return d >= from && d <= to;
+                });
+                
+                const groups = {};
+                inRange.forEach(t => {
+                    const key = isoWeekKey(t.date);
+                    if(!groups[key]) {
+                        groups[key] = {revenue:0, cogs:0, purchases:0, count:0};
+                    }
+                    const it = items.find(i => i.id === t.itemId) || {};
+                    if(t.type === 'sale'){
+                        groups[key].revenue += (it.hargaJual || 0) * t.qty;
+                        groups[key].cogs += (it.hargaModal || 0) * t.qty;
+                    }
+                    if(t.type === 'purchase'){
+                        groups[key].purchases += (it.hargaModal || 0) * t.qty;
+                    }
+                    groups[key].count++;
+                });
+                return groups;
+            }
+            
+            function calcMonthly(fromDate, toDate){
+                if(!fromDate || !toDate) return {};
+                
+                const from = new Date(fromDate + 'T00:00:00');
+                const to = new Date(toDate + 'T23:59:59');
+                
+                const inRange = txns.filter(t => {
+                    const d = new Date(t.date + 'T12:00:00');
+                    return d >= from && d <= to;
+                });
+                
+                const groups = {};
+                inRange.forEach(t => {
+                    const d = new Date(t.date + 'T12:00:00');
+                    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0');
+                    if(!groups[key]) {
+                        groups[key] = {revenue:0, cogs:0, purchases:0, count:0};
+                    }
+                    const it = items.find(i => i.id === t.itemId) || {};
+                    if(t.type === 'sale'){
+                        groups[key].revenue += (it.hargaJual || 0) * t.qty;
+                        groups[key].cogs += (it.hargaModal || 0) * t.qty;
+                    }
+                    if(t.type === 'purchase'){
+                        groups[key].purchases += (it.hargaModal || 0) * t.qty;
+                    }
+                    groups[key].count++;
+                });
+                return groups;
+            }
+            
+            // UI handlers
+            function onWeekly(){
+                const from = $('fromDate').value;
+                const to = $('toDate').value;
+                if(!from || !to){
+                    alert('Pilih rentang tanggal terlebih dahulu');
+                    return;
+                }
+                
+                const groups = calcWeekly(from, to);
+                renderReportGroups(groups, 'Mingguan');
+            }
+            
+            function onMonthly(){
+                const from = $('fromDate').value;
+                const to = $('toDate').value;
+                if(!from || !to){
+                    alert('Pilih rentang tanggal terlebih dahulu');
+                    return;
+                }
+                
+                const groups = calcMonthly(from, to);
+                renderReportGroups(groups, 'Bulanan');
+            }
+            
+            function renderReportGroups(groups, title){
+                const keys = Object.keys(groups).sort();
+                if(keys.length === 0){
+                    alert(title + ' — tidak ada transaksi pada rentang tanggal.');
+                    return;
+                }
+                
+                let txt = title + " Report:\n\n";
+                keys.forEach(k => {
+                    const g = groups[k];
+                    txt += `${k}:\n`;
+                    txt += `  Pendapatan: ${fmt(g.revenue)}\n`;
+                    txt += `  COGS: ${fmt(g.cogs)}\n`;
+                    txt += `  Laba: ${fmt(g.revenue - g.cogs)}\n`;
+                    txt += `  Pembelian: ${fmt(g.purchases)}\n\n`;
+                });
+                
+                // Also show totals
+                const totals = keys.reduce((acc, k) => {
+                    acc.revenue += groups[k].revenue;
+                    acc.cogs += groups[k].cogs;
+                    acc.purchases += groups[k].purchases;
+                    return acc;
+                }, {revenue:0, cogs:0, purchases:0});
+                
+                $('rev').textContent = fmt(totals.revenue);
+                $('cogs').textContent = fmt(totals.cogs);
+                $('profit').textContent = fmt(totals.revenue - totals.cogs);
+                $('purchases').textContent = fmt(totals.purchases);
+                
+                alert(txt);
+            }
+            
+            function updateTodaySummary(){
+                const today = todayStr();
+                const rep = calcReport(today, today);
+                $('todaySummary').textContent = fmt(rep.revenue);
+                $('todaySummaryClear').textContent = fmt(rep.revenue);
+            }
+            
+            function renderAll(){
+                renderItems($('search').value);
+                renderTx();
+                updateTodaySummary();
+            }
+            
+            // Initialize event listeners
+            function initEvents(){
+                // Toggle clear mode
+                $('toggleClearMode').addEventListener('click', toggleClearMode);
+                
+                // Search
+                $('search').addEventListener('input', e => renderItems(e.target.value));
+                
+                // Add item button
+                $('addItemBtn').addEventListener('click', () => openModalForEdit(null));
+                
+                // Modal barang - stock calculation listeners
+                $('m_stokAwal').addEventListener('input', updateStockDisplay);
+                $('m_masuk').addEventListener('input', updateStockDisplay);
+                $('m_keluar').addEventListener('input', updateStockDisplay);
+                
+                // Modal barang
+                $('modalCancel').addEventListener('click', closeModal);
+                $('modalBackdrop').addEventListener('click', e => {
+                    if(e.target.id === 'modalBackdrop') closeModal();
+                });
+                
+                $('modalSave').addEventListener('click', () => {
+                    const nama = $('m_nama').value.trim();
+                    const hm = Number($('m_hargaModal').value || 0);
+                    const hj = Number($('m_hargaJual').value || 0);
+                    const sa = Number($('m_stokAwal').value || 0);
+                    const masuk = Number($('m_masuk').value || 0);
+                    const keluar = Number($('m_keluar').value || 0);
+                    
+                    if(!nama){
+                        alert('Nama barang wajib diisi');
+                        $('m_nama').focus();
+                        return;
+                    }
+                    
+                    if(hj < hm){
+                        if(!confirm('Harga jual lebih rendah dari harga modal. Tetap simpan?')){
+                            $('m_hargaJual').focus();
+                            return;
+                        }
+                    }
+                    
+                    if(editId){
+                        // Edit existing item
+                        const it = items.find(x => x.id === editId);
+                        Object.assign(it, {
+                            nama,
+                            hargaModal: hm,
+                            hargaJual: hj,
+                            stokAwal: sa,
+                            masuk: masuk,
+                            keluar: keluar
+                        });
+                    } else {
+                        // Add new item
+                        items.push({
+                            id: uid(),
+                            nama,
+                            hargaModal: hm,
+                            hargaJual: hj,
+                            stokAwal: sa,
+                            masuk: masuk,
+                            keluar: keluar
+                        });
+                    }
+                    
+                    saveItems(items);
+                    renderAll();
+                    closeModal();
+                });
+                
+                // Modal transaksi
+                $('txCancel').addEventListener('click', closeTxModal);
+                $('txModalBackdrop').addEventListener('click', e => {
+                    if(e.target.id === 'txModalBackdrop') closeTxModal();
+                });
+                
+                $('txSave').addEventListener('click', () => {
+                    if(!editTxId) return;
+                    
+                    const tx = txns.find(x => x.id === editTxId);
+                    if(!tx) return;
+                    
+                    const oldDate = tx.date;
+                    const oldQty = tx.qty;
+                    const newDate = $('tx_date').value;
+                    const newQty = Number($('tx_qty').value || 0);
+                    
+                    if(newQty <= 0){
+                        alert('Qty harus angka > 0');
+                        return;
+                    }
+                    
+                    // Update the item stock based on transaction type
+                    const it = items.find(i => i.id === tx.itemId);
+                    if(it) {
+                        if(tx.type === 'sale') {
+                            // Reverse old sale, apply new sale
+                            it.keluar = Number(it.keluar || 0) - oldQty + newQty;
+                        } else if(tx.type === 'purchase') {
+                            // Reverse old purchase, apply new purchase
+                            it.masuk = Number(it.masuk || 0) - oldQty + newQty;
+                        }
+                    }
+                    
+                    // Update transaction
+                    tx.date = newDate;
+                    tx.qty = newQty;
+                    
+                    saveTx(txns);
+                    saveItems(items);
+                    renderAll();
+                    closeTxModal();
+                });
+                
+                // Import modal events
+                $('importCsv').addEventListener('click', openImportModal);
+                $('importCancel').addEventListener('click', closeImportModal);
+                $('importProcess').addEventListener('click', importData);
+                
+                // Import option selection
+                document.querySelectorAll('.import-option').forEach(opt => {
+                    opt.addEventListener('click', function() {
+                        document.querySelectorAll('.import-option').forEach(o => o.classList.remove('selected'));
+                        this.classList.add('selected');
+                        importMode = this.dataset.option;
+                    });
+                });
+                
+                // File input handling - FIXED
+                const fileInput = $('fileInput');
+                const fileInputLabel = $('fileInputLabel');
+                
+                fileInput.addEventListener('change', function(e) {
+                    if (this.files.length > 0) {
+                        selectedFile = this.files[0];
+                        $('fileInfo').textContent = `📄 ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+                        $('importProcess').disabled = false;
+                    }
+                });
+                
+                // Drag and drop for file input
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    fileInputLabel.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    fileInputLabel.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    fileInputLabel.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    fileInputLabel.classList.add('dragover');
+                }
+                
+                function unhighlight() {
+                    fileInputLabel.classList.remove('dragover');
+                }
+                
+                fileInputLabel.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    
+                    if (files.length > 0) {
+                        selectedFile = files[0];
+                        $('fileInfo').textContent = `📄 ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+                        $('importProcess').disabled = false;
+                        
+                        // Set file input value (for UI consistency)
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(selectedFile);
+                        fileInput.files = dataTransfer.files;
+                    }
+                });
+                
+                // Transaction buttons (original)
+                $('recordSale').addEventListener('click', recordSale);
+                $('recordBuy').addEventListener('click', recordBuy);
+                
+                // Transaction buttons (clear mode)
+                $('recordSaleClear').addEventListener('click', recordSaleClear);
+                $('recordBuyClear').addEventListener('click', recordBuyClear);
+                
+                // Report buttons
+                $('btnWeekly').addEventListener('click', onWeekly);
+                $('btnMonthly').addEventListener('click', onMonthly);
+                
+                // Export CSV
+                $('exportCsv').addEventListener('click', () => {
+                    const rows = [];
+                    
+                    // Header untuk barang
+                    rows.push(['DAFTAR BARANG']);
+                    rows.push(['Nama','Harga Modal','Harga Jual','Stok Awal','Masuk','Keluar','Stok Akhir']);
+                    
+                    items.forEach((it) => {
+                        rows.push([
+                            it.nama,
+                            it.hargaModal,
+                            it.hargaJual,
+                            it.stokAwal,
+                            it.masuk,
+                            it.keluar,
+                            (it.stokAwal + it.masuk - it.keluar)
+                        ]);
+                    });
+                    
+                    // Baris kosong
+                    rows.push([]);
+                    
+                    // Header untuk transaksi
+                    rows.push(['RIWAYAT TRANSAKSI']);
+                    rows.push(['Tanggal','Tipe','Nama Barang','Qty','Harga Jual','Harga Modal']);
+                    
+                    txns.forEach(t => {
+                        const it = items.find(x => x.id === t.itemId) || {};
+                        rows.push([
+                            t.date,
+                            t.type === 'sale' ? 'Jual' : 'Beli',
+                            it.nama || '?',
+                            t.qty,
+                            it.hargaJual || 0,
+                            it.hargaModal || 0
+                        ]);
+                    });
+                    
+                    // Convert ke CSV
+                    const csvContent = rows.map(row => 
+                        row.map(cell => {
+                            if (cell === null || cell === undefined) return '""';
+                            const cellStr = String(cell);
+                            // Escape quotes
+                            const escaped = cellStr.replace(/"/g, '""');
+                            // Wrap in quotes if contains comma, quote, or newline
+                            if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                                return '"' + escaped + '"';
+                            }
+                            return escaped;
+                        }).join(',')
+                    ).join('\n');
+                    
+                    // Download
+                    const blob = new Blob(['\ufeff' + csvContent], {type: 'text/csv;charset=utf-8;'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `catatan-kios-${todayStr()}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                // Clear data
+                $('clearData').addEventListener('click', () => {
+                    if(confirm('Reset semua data (barang + transaksi)? Data tidak bisa dikembalikan.')){
+                        localStorage.removeItem(KEY_ITEMS);
+                        localStorage.removeItem(KEY_TX);
+                        items = loadItems();
+                        txns = [];
+                        saveItems(items);
+                        saveTx(txns);
+                        renderAll();
+                        alert('Data telah direset ke contoh awal.');
+                    }
+                });
+            }
+            
+            // Initialize sample transactions if empty
+            function initSampleTransactions(){
+                if(txns.length === 0){
+                    const today = todayStr();
+                    // Use the first item from sample items
+                    if(items.length > 0){
+                        txns = [
+                            {id:uid(), type:'sale', itemId:items[0].id, qty:15, date:today},
+                            {id:uid(), type:'purchase', itemId:items[0].id, qty:20, date:today},
+                            {id:uid(), type:'sale', itemId:items[3]?.id || items[0].id, qty:8, date:today}
+                        ];
+                        saveTx(txns);
+                    }
+                }
+            }
+            
+            // Initial setup
+            function init(){
+                initClearMode();
+                initEvents();
+                initSampleTransactions();
+                renderAll();
+            }
+            
+            // Start the application
+            document.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
+</body>
+
+</html>
