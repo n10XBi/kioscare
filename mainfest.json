@@ -1,11 +1,10 @@
 {
   "name": "Catatan Kios",
   "short_name": "Kios",
-  "description": "POS & Catatan Kios Offline",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f5f7fb",
+  "background_color": "#ffffff",
   "theme_color": "#0ea5a4",
   "icons": [
     {
